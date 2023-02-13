@@ -9,7 +9,7 @@ import { ContainerSchema } from "@fluidframework/fluid-static";
 import { InsecureTokenProvider } from "@fluidframework/test-client-utils";
 
 export const diceValueKey = "dice-value-key";
-// Load container and render the app
+let window: { [key: string]: any };
 
 const userConfig = {
     id: "userId",
@@ -21,7 +21,7 @@ const userConfig = {
 
 const serviceConfig: AzureLocalConnectionConfig = {
     type: "local",
-    tokenProvider: new InsecureTokenProvider("", userConfig),
+    tokenProvider: new InsecureTokenProvider("fooBar", userConfig),
     endpoint: "http://localhost:7070",
 };
 
@@ -96,5 +96,5 @@ const renderDiceRoller = (diceMap: any, elem: any) => {
     diceMap.on("valueChanged", updateDice);
 
     // Setting "fluidStarted" is just for our test automation
-    // window["fluidStarted"] = true; // uncomment this once done
+    window["fluidStarted"] = true;
 };

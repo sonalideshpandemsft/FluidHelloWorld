@@ -25,6 +25,18 @@ module.exports = (env) => {
             filename: "[name].[contenthash].js",
         },
         plugins,
+        module: {
+            rules: [
+                {
+                    test: /\.tsx?$/,
+                    use: "ts-loader",
+                    exclude: /node_modules/,
+                },
+            ],
+        },
+        resolve: {
+            extensions: [".ts", ".tsx", ".js"],
+        },
         devServer: {
             open: false,
         },
