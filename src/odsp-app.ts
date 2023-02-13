@@ -16,11 +16,13 @@ import { OdspClient } from "./odsp-client/OdspClient";
 
 export const diceValueKey = "dice-value-key";
 let window: { [key: string]: any };
-let driver: OdspDriver;
+let sharingLink: string;
 const documentId = uuid();
 
 const initDriver = async () => {
-    driver = await OdspDriver.createFromEnv({ directory: "OdspTestClient" });
+    const driver: OdspDriver = await OdspDriver.createFromEnv({
+        directory: "OdspHelloWorldClient",
+    });
     const connectionConfig: OdspConnectionConfig = {
         getSharePointToken: driver.getStorageToken,
         getPushServiceToken: driver.getPushToken,
@@ -36,7 +38,7 @@ const containerSchema: ContainerSchema = {
 
 const root = document.getElementById("content");
 
-const createNewDice = async (odspDriver: OdspDriver) => {
+const createDice = async (odspDriver: OdspDriver) => {
     const containerConfig: OdspCreateContainerConfig = {
         siteUrl: odspDriver.siteUrl,
         driveId: odspDriver.driveId,
@@ -44,13 +46,18 @@ const createNewDice = async (odspDriver: OdspDriver) => {
         fileName: documentId,
     };
 
-    const { fluidContainer } = await OdspClient.createContainer(containerConfig, containerSchema);
+    const { fluidContainer, containerServices } = await OdspClient.createContainer(
+        containerConfig,
+        containerSchema,
+    );
+
+    sharingLink = await containerServices.generateLink();
 
     const map = fluidContainer.initialObjects.diceMap as SharedMap;
     map.set(diceValueKey, 1);
-    const id = await fluidContainer.attach();
+    await fluidContainer.attach();
     renderDiceRoller(map, root);
-    return id;
+    return sharingLink;
 };
 
 const loadDice = async (url: string) => {
@@ -68,10 +75,17 @@ async function start() {
     const odspDriver = await initDriver();
 
     if (location.hash) {
-        await loadDice(location.hash.substring(1));
+        await loadDice(decodeURI(location.hash));
     } else {
-        const id = await createNewDice(odspDriver);
-        location.hash = id;
+        const id = await createDice(odspDriver);
+
+        /**
+         * The encodeURI() function is used to encode a URI and the decodeURI() function is used to decode the encoded URI.
+         * In this code, url is encoded using encodeURI() and then stored in the window.location.hash property. Finally, the location.hash
+         * property is decoded using decodeURI() and logged to the console.
+         */
+
+        window.location.hash = encodeURI(id); //The encodeURI function is used to encode the URL string so that it can be safely used in the hash fragment of the URL. The location.hash property returns the value of the hash fragment of the URL. In this case, it returns the encoded URL string as the hash fragment.
     }
 }
 

@@ -33,7 +33,7 @@ const containerSchema: ContainerSchema = {
 
 const root = document.getElementById("content");
 
-const createNewDice = async () => {
+const createDice = async () => {
     const { container } = await client.createContainer(containerSchema);
     const map = container.initialObjects.diceMap as SharedMap;
     map.set(diceValueKey, 1);
@@ -42,7 +42,7 @@ const createNewDice = async () => {
     return id;
 };
 
-const loadExistingDice = async (id: string) => {
+const loadDice = async (id: string) => {
     const { container } = await client.getContainer(id, containerSchema);
     const map = container.initialObjects.diceMap as SharedMap;
     renderDiceRoller(map, root);
@@ -50,9 +50,9 @@ const loadExistingDice = async (id: string) => {
 
 async function start() {
     if (location.hash) {
-        await loadExistingDice(location.hash.substring(1));
+        await loadDice(location.hash.substring(1));
     } else {
-        const id = await createNewDice();
+        const id = await createDice();
         location.hash = id;
     }
 }
