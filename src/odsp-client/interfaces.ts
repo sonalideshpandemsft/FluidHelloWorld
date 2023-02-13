@@ -10,18 +10,6 @@ import {
     OdspResourceTokenFetchOptions,
 } from "@fluidframework/odsp-driver-definitions";
 
-export interface IAuthToken {
-    username: any;
-    accessToken: string;
-    expiresOn: number;
-}
-
-export interface IFluidAuthTokens {
-    graphToken?: IAuthToken;
-    sharePointToken?: IAuthToken;
-    pushServiceToken?: IAuthToken;
-}
-
 export interface IDriveInfo {
     siteUrl: string;
     driveId: string;
