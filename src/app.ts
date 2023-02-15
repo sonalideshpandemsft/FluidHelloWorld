@@ -9,7 +9,7 @@ import { ContainerSchema } from "@fluidframework/fluid-static";
 import { InsecureTokenProvider } from "@fluidframework/test-client-utils";
 
 export const diceValueKey = "dice-value-key";
-let window: { [key: string]: any };
+let window: { [key: string]: any } = {};
 
 const userConfig = {
     id: "userId",
