@@ -54,8 +54,9 @@ module.exports = (env) => {
 	const mode = env && env.prod ? "production" : "development";
 
 	return {
-		entry: "./src/odsp-app.ts",
-		target: "node",
+		entry: {
+			app: "./src/odsp-app.ts",
+		},
 		mode,
 		output: {
 			filename: "odsp-app.js",
@@ -83,6 +84,10 @@ module.exports = (env) => {
 		},
 		resolve: {
 			extensions: [".tsx", ".ts", ".js"],
+			fallback: {
+				fs: false, // or "stream"
+				http: false, // or "stream-http"
+			},
 		},
 		devServer: {
 			contentBase: path.join(__dirname, "src"),
