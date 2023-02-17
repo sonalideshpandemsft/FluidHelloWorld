@@ -49,10 +49,10 @@
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const path = require("path");
+const webpack = require("webpack");
 
 module.exports = (env) => {
 	const mode = env && env.prod ? "production" : "development";
-
 	return {
 		entry: {
 			app: "./src/odsp-app.ts",
@@ -72,6 +72,9 @@ module.exports = (env) => {
 					},
 				],
 			}),
+			new webpack.DefinePlugin({
+				process: { env: {} }, // define an empty `process` object
+			}),
 		],
 		module: {
 			rules: [
@@ -85,8 +88,9 @@ module.exports = (env) => {
 		resolve: {
 			extensions: [".tsx", ".ts", ".js"],
 			fallback: {
-				fs: false, // or "stream"
-				http: false, // or "stream-http"
+				"fs": false, // or "stream"
+				"http": false, // or "stream-http",
+				"graceful-fs": require.resolve("fs-extra"),
 			},
 		},
 		devServer: {
