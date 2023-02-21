@@ -7,30 +7,14 @@ import { v4 as uuid } from "uuid";
 import { SharedMap } from "@fluidframework/map";
 import { ContainerSchema } from "@fluidframework/fluid-static";
 import { OdspDriver } from "./odsp-client/OdspDriver";
-import {
-	OdspConnectionConfig,
-	OdspCreateContainerConfig,
-	OdspGetContainerConfig,
-} from "./odsp-client/interfaces";
+import { OdspCreateContainerConfig, OdspGetContainerConfig } from "./odsp-client/interfaces";
 import { OdspClient } from "./odsp-client/OdspClient";
+import { initDriver } from "./odsp-client/InitiateDriver";
 
 export const diceValueKey = "dice-value-key";
-let window: { [key: string]: any };
+let window: { [key: string]: any } = {};
 let sharingLink: string;
 const documentId = uuid();
-
-const initDriver = async () => {
-	const driver: OdspDriver = await OdspDriver.createFromEnv({
-		directory: "OdspHelloWorldClient",
-	});
-	const connectionConfig: OdspConnectionConfig = {
-		getSharePointToken: driver.getStorageToken,
-		getPushServiceToken: driver.getPushToken,
-	};
-
-	OdspClient.init(connectionConfig);
-	return driver;
-};
 
 const containerSchema: ContainerSchema = {
 	initialObjects: { diceMap: SharedMap },
@@ -38,7 +22,8 @@ const containerSchema: ContainerSchema = {
 
 const root = document.getElementById("content");
 
-const createDice = async (odspDriver: OdspDriver) => {
+const createDice = async () => {
+	const odspDriver = await initDriver();
 	const containerConfig: OdspCreateContainerConfig = {
 		siteUrl: odspDriver.siteUrl,
 		driveId: odspDriver.driveId,
@@ -73,13 +58,11 @@ const loadDice = async (url: string) => {
 
 async function start() {
 	console.log("Initiating the driver------");
-	const odspDriver = await initDriver();
-	console.log("Initiating the app------", odspDriver);
 
 	if (location.hash) {
 		await loadDice(decodeURI(location.hash));
 	} else {
-		const id = await createDice(odspDriver);
+		const id = await createDice();
 
 		/**
 		 * The encodeURI() function is used to encode a URI and the decodeURI() function is used to decode the encoded URI.

@@ -11,21 +11,21 @@ import { IDriveInfo } from "./interfaces";
  * current user's personal drive
  */
 export async function getShareUrl(
-    msGraphClient: MSGraphClient,
-    itemId: string,
-    fileAccessScope: string,
-    driveInfo?: IDriveInfo,
+	msGraphClient: MSGraphClient,
+	itemId: string,
+	fileAccessScope: string,
+	driveInfo?: IDriveInfo,
 ): Promise<string> {
-    const apiPath = driveInfo
-        ? `/drives/${driveInfo.driveId}/items/${itemId}/createLink`
-        : `/me/drive/items/${itemId}/createLink`;
-    return msGraphClient
-        .api(apiPath)
-        .post({
-            type: "edit",
-            scope: fileAccessScope,
-        })
-        .then((rawMessages) => rawMessages.link.webUrl as string);
+	const apiPath: string = driveInfo
+		? `/drives/${driveInfo.driveId}/items/${itemId}/createLink`
+		: `/me/drive/items/${itemId}/createLink`;
+	return msGraphClient
+		.api(apiPath)
+		.post({
+			type: "edit",
+			scope: fileAccessScope,
+		})
+		.then((rawMessages) => rawMessages.link.webUrl as string);
 }
 
 /**
@@ -35,18 +35,18 @@ export async function getShareUrl(
  * @param driveInfo
  */
 export function addLocatorToShareUrl(
-    shareUrl: string,
-    itemId: string,
-    driveInfo: IDriveInfo,
+	shareUrl: string,
+	itemId: string,
+	driveInfo: IDriveInfo,
 ): string {
-    const shareUrlObject = new URL(shareUrl);
-    storeLocatorInOdspUrl(shareUrlObject, {
-        siteUrl: driveInfo.siteUrl,
-        driveId: driveInfo.driveId,
-        itemId,
-        dataStorePath: "",
-    });
-    return shareUrlObject.href;
+	const shareUrlObject = new URL(shareUrl);
+	storeLocatorInOdspUrl(shareUrlObject, {
+		siteUrl: driveInfo.siteUrl,
+		driveId: driveInfo.driveId,
+		itemId,
+		dataStorePath: "",
+	});
+	return shareUrlObject.href;
 }
 
 /**
@@ -59,13 +59,13 @@ export function addLocatorToShareUrl(
  * @param fileAccessScope
  * */
 export async function getContainerShareLink(
-    itemId: string,
-    driveInfo: IDriveInfo,
-    msGraphClient: MSGraphClient,
-    fileAccessScope = "organization",
+	itemId: string,
+	driveInfo: IDriveInfo,
+	msGraphClient: MSGraphClient,
+	fileAccessScope = "organization",
 ): Promise<string> {
-    const shareLink = await getShareUrl(msGraphClient, itemId, fileAccessScope, driveInfo);
-    const shareLinkWithLocator = addLocatorToShareUrl(shareLink, itemId, driveInfo);
+	const shareLink = await getShareUrl(msGraphClient, itemId, fileAccessScope, driveInfo);
+	const shareLinkWithLocator = addLocatorToShareUrl(shareLink, itemId, driveInfo);
 
-    return shareLinkWithLocator;
+	return shareLinkWithLocator;
 }
