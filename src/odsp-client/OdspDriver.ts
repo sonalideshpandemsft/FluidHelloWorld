@@ -11,10 +11,10 @@ import type {
 	HostStoragePolicy,
 } from "@fluidframework/odsp-driver-definitions";
 import {
+	getMicrosoftConfiguration,
 	OdspTokenConfig,
 	OdspTokenManager,
 	odspTokensCache,
-	getMicrosoftConfiguration,
 } from "@fluidframework/tool-utils";
 
 const passwordTokenConfig = (username: string, password: string): OdspTokenConfig => ({

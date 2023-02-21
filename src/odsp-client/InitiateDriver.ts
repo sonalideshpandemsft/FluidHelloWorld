@@ -7,8 +7,10 @@ import { OdspConnectionConfig } from "./interfaces";
 import { OdspClient } from "./OdspClient";
 import { OdspDriver } from "./OdspDriver";
 
-export const initDriver = async () => {
-	const driver: OdspDriver = await OdspDriver.createFromEnv();
+const initDriver = async () => {
+	console.log("Driver init------");
+	const driver: OdspDriver = await OdspDriver.createFromEnv({ directory: "OdspFluidHelloWorld" });
+	console.log("Driver------", driver);
 	const connectionConfig: OdspConnectionConfig = {
 		getSharePointToken: driver.getStorageToken,
 		getPushServiceToken: driver.getPushToken,
@@ -16,4 +18,10 @@ export const initDriver = async () => {
 
 	OdspClient.init(connectionConfig);
 	return driver;
+};
+
+export const getodspDriver = async () => {
+	const odspDriver = await initDriver();
+	console.log("INITIAL DRIVER", odspDriver);
+	return odspDriver;
 };

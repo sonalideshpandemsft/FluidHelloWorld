@@ -6,10 +6,9 @@
 import { v4 as uuid } from "uuid";
 import { SharedMap } from "@fluidframework/map";
 import { ContainerSchema } from "@fluidframework/fluid-static";
-import { OdspDriver } from "./odsp-client/OdspDriver";
 import { OdspCreateContainerConfig, OdspGetContainerConfig } from "./odsp-client/interfaces";
 import { OdspClient } from "./odsp-client/OdspClient";
-import { initDriver } from "./odsp-client/InitiateDriver";
+import { getodspDriver } from "./odsp-client/InitiateDriver";
 
 export const diceValueKey = "dice-value-key";
 let window: { [key: string]: any } = {};
@@ -23,7 +22,9 @@ const containerSchema: ContainerSchema = {
 const root = document.getElementById("content");
 
 const createDice = async () => {
-	const odspDriver = await initDriver();
+	console.log("CREATING THE CONTAINER");
+	const odspDriver = await getodspDriver();
+	console.log("INITIAL DRIVER", odspDriver);
 	const containerConfig: OdspCreateContainerConfig = {
 		siteUrl: odspDriver.siteUrl,
 		driveId: odspDriver.driveId,
@@ -31,12 +32,18 @@ const createDice = async () => {
 		fileName: documentId,
 	};
 
+	console.log("CONTAINER CONFIG", containerConfig);
+
 	const { fluidContainer, containerServices } = await OdspClient.createContainer(
 		containerConfig,
 		containerSchema,
 	);
 
+	console.log("CONTAINER CREATED");
+
 	sharingLink = await containerServices.generateLink();
+
+	console.log("SHARING LINK", sharingLink);
 
 	const map = fluidContainer.initialObjects.diceMap as SharedMap;
 	map.set(diceValueKey, 1);

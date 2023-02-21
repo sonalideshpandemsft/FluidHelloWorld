@@ -1,77 +1,21 @@
-/*!
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License.
- */
-
-// // webpack config working for Azure apps
-// const { CleanWebpackPlugin } = require("clean-webpack-plugin");
-// const HtmlWebpackPlugin = require("html-webpack-plugin");
-// const webpack = require("webpack");
-
-// module.exports = (env) => {
-// 	const htmlTemplate = "./src/index.html";
-// 	const plugins =
-// 		env && env.clean
-// 			? [new CleanWebpackPlugin(), new HtmlWebpackPlugin({ template: htmlTemplate })]
-// 			: [new HtmlWebpackPlugin({ template: htmlTemplate })];
-
-// 	const mode = env && env.prod ? "production" : "development";
-
-// 	return {
-// 		devtool: "inline-source-map",
-// 		entry: {
-// 			app: "./src/odsp-app.ts",
-// 		},
-// 		mode,
-// 		output: {
-// 			filename: "[name].[contenthash].js",
-// 		},
-// 		plugins,
-// 		module: {
-// 			rules: [
-// 				{
-// 					test: /\.tsx?$/,
-// 					use: "ts-loader",
-// 					exclude: /node_modules/,
-// 				},
-// 			],
-// 		},
-// 		resolve: {
-// 			extensions: [".ts", ".tsx", ".js"],
-// 			fallback: {
-// 				http: false,
-// 				fs: false,
-// 			},
-// 		},
-// 		devServer: {
-// 			open: false,
-// 		},
-// 	};
-// };
-
-// odsp client webpack
+const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const webpack = require("webpack");
 
-module.exports = (env) => {
-	const htmlTemplate = "./src/index.html";
-
-	const mode = env && env.prod ? "production" : "development";
-
-	return {
-		devtool: "inline-source-map",
-		entry: {
-			app: "./src/odsp-app.ts",
-		},
-		mode,
+module.exports = [
+	{
+		// Browser bundle configuration
+		entry: "./src/odsp-app.ts",
+		mode: "development",
 		output: {
 			filename: "[name].[contenthash].js",
+			path: path.resolve(__dirname, "dist"),
 		},
 		plugins: [
 			new webpack.ProvidePlugin({
 				process: "process/browser",
 			}),
-			new HtmlWebpackPlugin({ template: htmlTemplate }),
+			new HtmlWebpackPlugin({ template: "./src/index.html" }),
 		],
 		module: {
 			rules: [
@@ -87,10 +31,31 @@ module.exports = (env) => {
 			fallback: {
 				http: false,
 				fs: false,
+				constants: false,
 			},
 		},
 		devServer: {
 			open: false,
 		},
-	};
-};
+	},
+	{
+		target: "node", // Tells webpack to target a Node.js environment
+		mode: "development",
+		entry: "./src/odsp-client/index.ts", // The entry point for your application
+		output: {
+			filename: "[name].[contenthash].js",
+			path: path.resolve(__dirname, "dist"),
+		},
+		resolve: {
+			extensions: [".ts", ".js"], // Allows importing both .ts and .js files without specifying extension
+		},
+		module: {
+			rules: [
+				{
+					test: /\.ts$/, // Use ts-loader for .ts files
+					use: "ts-loader",
+				},
+			],
+		},
+	},
+];
