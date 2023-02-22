@@ -17,7 +17,7 @@ import {
 	odspTokensCache,
 } from "@fluidframework/tool-utils";
 
-const passwordTokenConfig = (username: string, password: string): OdspTokenConfig => ({
+const passwordTokenConfig = (username: any, password: any): OdspTokenConfig => ({
 	type: "password",
 	username,
 	password,
@@ -48,10 +48,17 @@ export class OdspDriver {
 	private static readonly odspTokenManager = new OdspTokenManager(odspTokensCache);
 	private static readonly driveIdPCache = new Map<string, Promise<string>>();
 	private static async getDriveIdFromConfig(tokenConfig: TokenConfig): Promise<string> {
+		console.log("get 1");
 		const siteUrl = tokenConfig.siteUrl;
+		console.log("get 2", siteUrl);
+		console.log("get 3", tokenConfig.supportsBrowserAuth);
 		try {
+			console.log("get 4", tokenConfig.supportsBrowserAuth);
 			return await getDriveId(siteUrl, "", undefined, {
-				accessToken: await this.getStorageToken({ siteUrl, refresh: false }, tokenConfig),
+				accessToken: await this.getStorageToken(
+					{ siteUrl, refresh: false, useBrowserAuth: true },
+					tokenConfig,
+				),
 				refreshTokenFn: async () =>
 					this.getStorageToken(
 						{ siteUrl, refresh: true, useBrowserAuth: true },
@@ -59,6 +66,7 @@ export class OdspDriver {
 					),
 			});
 		} catch (ex) {
+			console.log("get 5", tokenConfig.supportsBrowserAuth);
 			if (tokenConfig.supportsBrowserAuth !== true) {
 				throw ex;
 			}
@@ -78,8 +86,9 @@ export class OdspDriver {
 		if (driveIdP) {
 			return driveIdP;
 		}
-
+		console.log("gerDriveid 1: ", driveIdP);
 		driveIdP = this.getDriveIdFromConfig(tokenConfig);
+		console.log("gerDriveid 2: ", driveIdP);
 		this.driveIdPCache.set(siteUrl, driveIdP);
 		try {
 			return await driveIdP;
@@ -149,7 +158,9 @@ export class OdspDriver {
 		console.log("create env directoryParts----");
 
 		const driveId = await this.getDriveId(loginConfig.siteUrl, tokenConfig);
+		console.log("create env directoryParts 2----", driveId);
 		const directoryParts = [directory];
+		console.log("create env directoryParts 3----", directoryParts);
 
 		// if we are in a azure dev ops build use the build id in the dir path
 		if (process.env.BUILD_BUILD_ID !== undefined) {
