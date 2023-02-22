@@ -9,7 +9,10 @@ import { OdspDriver } from "./OdspDriver";
 
 const initDriver = async () => {
 	console.log("Driver init------");
-	const driver: OdspDriver = await OdspDriver.createFromEnv({ directory: "OdspFluidHelloWorld" });
+	const driver: OdspDriver = await OdspDriver.createFromEnv({
+		directory: "OdspFluidHelloWorld",
+		supportsBrowserAuth: true,
+	});
 	console.log("Driver------", driver);
 	const connectionConfig: OdspConnectionConfig = {
 		getSharePointToken: driver.getStorageToken,

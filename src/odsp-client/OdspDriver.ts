@@ -24,9 +24,10 @@ const passwordTokenConfig = (username: string, password: string): OdspTokenConfi
 });
 
 interface IOdspTestLoginInfo {
-	server: string;
+	siteUrl: string;
 	username: string;
 	password: string;
+	supportsBrowserAuth?: boolean;
 }
 
 type TokenConfig = IOdspTestLoginInfo & IClientConfig;
@@ -45,18 +46,54 @@ export interface IOdspTestDriverConfig extends TokenConfig {
 export class OdspDriver {
 	// Share the tokens and driverId across multiple instance of the test driver
 	private static readonly odspTokenManager = new OdspTokenManager(odspTokensCache);
-	private static readonly driverIdPCache = new Map<string, Promise<string>>();
-	private static async getDriveId(server: string, tokenConfig: TokenConfig): Promise<string> {
-		const siteUrl = `https://${tokenConfig.server}`;
-		return getDriveId(server, "", undefined, {
-			accessToken: await this.getStorageToken({ siteUrl, refresh: false }, tokenConfig),
+	private static readonly driveIdPCache = new Map<string, Promise<string>>();
+	private static async getDriveIdFromConfig(tokenConfig: TokenConfig): Promise<string> {
+		const siteUrl = tokenConfig.siteUrl;
+		try {
+			return await getDriveId(siteUrl, "", undefined, {
+				accessToken: await this.getStorageToken({ siteUrl, refresh: false }, tokenConfig),
+				refreshTokenFn: async () =>
+					this.getStorageToken(
+						{ siteUrl, refresh: true, useBrowserAuth: true },
+						tokenConfig,
+					),
+			});
+		} catch (ex) {
+			if (tokenConfig.supportsBrowserAuth !== true) {
+				throw ex;
+			}
+		}
+		return getDriveId(siteUrl, "", undefined, {
+			accessToken: await this.getStorageToken(
+				{ siteUrl, refresh: false, useBrowserAuth: true },
+				tokenConfig,
+			),
+			refreshTokenFn: async () =>
+				this.getStorageToken({ siteUrl, refresh: true, useBrowserAuth: true }, tokenConfig),
 		});
+	}
+
+	private static async getDriveId(siteUrl: string, tokenConfig: TokenConfig) {
+		let driveIdP = this.driveIdPCache.get(siteUrl);
+		if (driveIdP) {
+			return driveIdP;
+		}
+
+		driveIdP = this.getDriveIdFromConfig(tokenConfig);
+		this.driveIdPCache.set(siteUrl, driveIdP);
+		try {
+			return await driveIdP;
+		} catch (e) {
+			this.driveIdPCache.delete(siteUrl);
+			throw e;
+		}
 	}
 
 	public static async createFromEnv(config?: {
 		directory?: string;
 		username?: string;
 		options?: HostStoragePolicy;
+		supportsBrowserAuth?: boolean;
 	}) {
 		const loginAccounts = process.env.login__odsp__test__accounts;
 		assert(loginAccounts !== undefined, "Missing login__odsp__test__accounts");
@@ -66,19 +103,37 @@ export class OdspDriver {
 		assert(passwords[username], `No password for username: ${username}`);
 
 		const emailServer = username.substr(username.indexOf("@") + 1);
-		const server = `${emailServer.substr(0, emailServer.indexOf("."))}.sharepoint.com`;
+		let siteUrl: string;
+		let tenantName: string;
+		if (emailServer.startsWith("http://") || emailServer.startsWith("https://")) {
+			// it's already a site url
+			tenantName = new URL(emailServer).hostname;
+			siteUrl = emailServer;
+		} else {
+			tenantName = emailServer.substr(0, emailServer.indexOf("."));
+			siteUrl = `https://${tenantName}.sharepoint.com`;
+		}
+
+		// force isolateSocketCache because we are using different users in a single context
+		// and socket can't be shared between different users
+		const options = config?.options ?? {};
+		options.isolateSocketCache = true;
+
+		console.log("create env server----", siteUrl);
 
 		return this.create(
 			{
 				username,
 				password: passwords[username],
-				server,
+				siteUrl,
+				supportsBrowserAuth: config?.supportsBrowserAuth,
 			},
 			config?.directory ?? "",
 			config?.options,
 		);
 	}
 
+	// use this directly instead
 	private static async create(
 		loginConfig: IOdspTestLoginInfo,
 		directory: string,
@@ -89,12 +144,11 @@ export class OdspDriver {
 			...getMicrosoftConfiguration(),
 		};
 
-		let driveIdP = this.driverIdPCache.get(loginConfig.server);
-		if (!driveIdP) {
-			driveIdP = this.getDriveId(loginConfig.server, tokenConfig);
-		}
+		console.log("create env tokenConfig----", tokenConfig);
 
-		const driveId = await driveIdP;
+		console.log("create env directoryParts----");
+
+		const driveId = await this.getDriveId(loginConfig.siteUrl, tokenConfig);
 		const directoryParts = [directory];
 
 		// if we are in a azure dev ops build use the build id in the dir path
@@ -111,25 +165,56 @@ export class OdspDriver {
 			options,
 		};
 
+		console.log("create env driverConfig----", driverConfig);
+
 		return new OdspDriver(driverConfig);
 	}
 
 	private static async getStorageToken(
-		options: OdspResourceTokenFetchOptions,
+		options: OdspResourceTokenFetchOptions & { useBrowserAuth?: boolean },
 		config: IOdspTestLoginInfo & IClientConfig,
 	) {
-		// This function can handle token request for any multiple sites. Where the test driver is for a specific site.
+		console.log("site url-------", options.siteUrl);
+		const host = new URL(options.siteUrl).host;
+
+		console.log("site url host-------", host);
+
+		if (options.useBrowserAuth === true) {
+			console.log("site url 1-------");
+			const browserTokens = await this.odspTokenManager.getOdspTokens(
+				host,
+				config,
+				{
+					type: "browserLogin",
+					navigator: (openUrl) => {
+						console.log(
+							`Open the following url in a new private browser window, and login with user: ${config.username}`,
+						);
+						console.log(
+							`Additional account details may be available in the environment variable login__odsp__test__accounts`,
+						);
+						console.log(`"${openUrl}"`);
+					},
+				},
+				options.refresh,
+			);
+			return browserTokens.accessToken;
+		}
+		console.log("site url 2-------", passwordTokenConfig(config.username, config.password));
+		// This function can handle token request for any multiple sites.
+		// Where the test driver is for a specific site.
 		const tokens = await this.odspTokenManager.getOdspTokens(
-			new URL(options.siteUrl).hostname,
+			host,
 			config,
 			passwordTokenConfig(config.username, config.password),
 			options.refresh,
 		);
+		console.log("site url 2-------", passwordTokenConfig(config.username, config.password));
 		return tokens.accessToken;
 	}
 
 	public get siteUrl(): string {
-		return `https://${this.config.server}`;
+		return `https://${this.config.siteUrl}`;
 	}
 	public get driveId(): string {
 		return this.config.driveId;
