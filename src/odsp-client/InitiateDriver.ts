@@ -19,7 +19,7 @@ const initDriver = async () => {
 		getPushServiceToken: driver.getPushToken,
 	};
 
-	OdspClient.init(connectionConfig);
+	OdspClient.init(connectionConfig, driver.siteUrl);
 	return driver;
 };
 

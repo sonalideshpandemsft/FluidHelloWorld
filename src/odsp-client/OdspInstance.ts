@@ -31,23 +31,25 @@ import {
 } from "./interfaces";
 import { getContainerShareLink } from "./odspUtils";
 import { OdspAudience } from "./OdspAudience";
+import { OdspUrlResolver } from "./odspUrlResolver";
+import { IClient } from "@fluidframework/protocol-definitions";
 
 /**
  * OdspInstance provides the ability to have a Fluid object backed by the ODSP service
  */
 export class OdspInstance {
 	public readonly documentServiceFactory: IDocumentServiceFactory;
-	public readonly urlResolver: OdspDriverUrlResolverForShareLink;
+	public readonly urlResolver: OdspUrlResolver;
 
-	constructor(private readonly serviceConnectionConfig: OdspConnectionConfig) {
+	constructor(private readonly serviceConnectionConfig: OdspConnectionConfig, server: string) {
 		this.documentServiceFactory = new OdspDocumentServiceFactory(
 			serviceConnectionConfig.getSharePointToken,
 			serviceConnectionConfig.getPushServiceToken,
 			undefined,
 		);
-		this.urlResolver = new OdspDriverUrlResolverForShareLink({
-			tokenFetcher: serviceConnectionConfig.getSharePointToken,
-			identityType: "Enterprise",
+		console.log("document service factory", this.documentServiceFactory);
+		this.urlResolver = new OdspUrlResolver(server, {
+			accessToken: "STORAGE_TOKEN",
 		});
 	}
 
@@ -68,6 +70,7 @@ export class OdspInstance {
 		serviceContainerConfig: OdspGetContainerConfig,
 		containerSchema: ContainerSchema,
 	): Promise<OdspResources> {
+		console.log("load container");
 		const container = await this.getContainerInternal(
 			serviceContainerConfig,
 			new DOProviderContainerRuntimeFactory(containerSchema),
@@ -97,6 +100,7 @@ export class OdspInstance {
 					if (url === undefined) {
 						throw new Error("container has no url");
 					}
+					console.log("URL---", url);
 					return url;
 				}
 			},
@@ -140,7 +144,7 @@ export class OdspInstance {
 		containerConfig: OdspCreateContainerConfig | OdspGetContainerConfig,
 		containerRuntimeFactory: IRuntimeFactory,
 		createNew: boolean,
-	): Promise<Container> {
+	): Promise<IContainer> {
 		const load = async (): Promise<IFluidModuleWithDetails> => {
 			return {
 				module: { fluidExport: containerRuntimeFactory },
@@ -150,15 +154,25 @@ export class OdspInstance {
 
 		const codeLoader = { load };
 
+		const client: IClient = {
+			details: {
+				capabilities: { interactive: true },
+			},
+			permission: [],
+			scopes: [],
+			user: { id: "" },
+			mode: "write",
+		};
+
 		const loader = new Loader({
 			urlResolver: this.urlResolver,
 			documentServiceFactory: this.documentServiceFactory,
 			codeLoader,
 			logger: containerConfig.logger,
-			options: {},
+			options: { client },
 		});
 
-		let container: Container;
+		let container: IContainer;
 		if (createNew) {
 			// Generate an ODSP driver specific new file request using the provided metadata for the file from the
 			// containerConfig.
@@ -189,13 +203,7 @@ export class OdspInstance {
 				headers: sharedConfig ? { [SharingLinkHeader.isSharingLinkToRedeem]: true } : {},
 			};
 			// Request must be appropriate and parseable by resolver.
-			container = (await loader.resolve(request)) as Container;
-			// If we didn't create the container properly, then it won't function correctly.  So we'll throw if we got a
-			// new container here, where we expect this to be loading an existing container.
-			// eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-			if (!container.clientId) {
-				throw new Error("Attempted to load a non-existing container");
-			}
+			container = await loader.resolve(request);
 		}
 		return container;
 	}

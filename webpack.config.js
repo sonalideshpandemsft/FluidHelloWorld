@@ -15,6 +15,12 @@ module.exports = [
 				process: "process/browser",
 			}),
 			new webpack.DefinePlugin({
+				"process.env.login__odsp__test__tenants": JSON.stringify(
+					"login__odsp__test__tenants",
+				),
+				"process.env.login__odspdf__test__tenants": JSON.stringify(
+					"login__odspdf__test__tenants",
+				),
 				"process.env.login__odsp__test__accounts": JSON.stringify(
 					"login__odsp__test__accounts",
 				),
