@@ -49,7 +49,7 @@ export class OdspInstance {
 		);
 		console.log("document service factory", this.documentServiceFactory);
 		this.urlResolver = new OdspUrlResolver(server, {
-			accessToken: "STORAGE_TOKEN",
+			accessToken: serviceConnectionConfig.getMicrosoftGraphToken as string,
 		});
 	}
 

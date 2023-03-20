@@ -17,6 +17,8 @@ const initDriver = async () => {
 	const connectionConfig: OdspConnectionConfig = {
 		getSharePointToken: driver.getStorageToken,
 		getPushServiceToken: driver.getPushToken,
+		getGraphToken: driver.getGraphToken,
+		getMicrosoftGraphToken: driver.getMicrosoftGraphToken,
 	};
 
 	OdspClient.init(connectionConfig, driver.siteUrl);

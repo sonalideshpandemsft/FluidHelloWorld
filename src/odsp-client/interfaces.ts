@@ -55,6 +55,7 @@ export interface OdspConnectionConfig {
 	getSharePointToken: TokenFetcher<OdspResourceTokenFetchOptions>;
 	getPushServiceToken: TokenFetcher<OdspResourceTokenFetchOptions>;
 	getGraphToken?: TokenFetcher<OdspResourceTokenFetchOptions>;
+	getMicrosoftGraphToken?: string;
 }
 
 /**

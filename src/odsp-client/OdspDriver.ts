@@ -4,46 +4,18 @@
  * Licensed under the MIT License.
  */
 
-import assert from "assert";
-import os from "os";
 import { getDriveId, IClientConfig } from "@fluidframework/odsp-doclib-utils";
 import type {
 	OdspResourceTokenFetchOptions,
 	HostStoragePolicy,
 } from "@fluidframework/odsp-driver-definitions";
-import {
-	OdspTokenConfig,
-	OdspTokenManager,
-	odspTokensCache,
-	getMicrosoftConfiguration,
-} from "@fluidframework/tool-utils";
+import { OdspTokenConfig, getMicrosoftConfiguration } from "@fluidframework/tool-utils";
 import {
 	OdspDocumentServiceFactory,
 	createOdspCreateContainerRequest,
 	createOdspUrl,
 	OdspDriverUrlResolver,
 } from "@fluidframework/odsp-driver";
-
-const passwordTokenConfig = (username: string, password: string): OdspTokenConfig => ({
-	type: "password",
-	username,
-	password,
-});
-
-// specific a range of user name from <prefix><start> to <prefix><start + count - 1> all having the same password
-interface LoginTenantRange {
-	prefix: string;
-	start: number;
-	count: number;
-	password: string;
-}
-
-interface LoginTenants {
-	[tenant: string]: {
-		range: LoginTenantRange;
-		// add different format here
-	};
-}
 
 interface IOdspTestLoginInfo {
 	siteUrl: string;
@@ -52,70 +24,12 @@ interface IOdspTestLoginInfo {
 	supportsBrowserAuth?: boolean;
 }
 
-type OdspEndpoint = "odsp" | "odsp-df";
-
 type TokenConfig = IOdspTestLoginInfo & IClientConfig;
 
 export interface IOdspTestDriverConfig extends TokenConfig {
 	directory: string;
 	driveId: string;
 	options: HostStoragePolicy | undefined;
-}
-
-export function assertOdspEndpoint(
-	endpoint: string | undefined,
-): asserts endpoint is OdspEndpoint | undefined {
-	if (endpoint === undefined || endpoint === "odsp" || endpoint === "odsp-df") {
-		return;
-	}
-	throw new TypeError("Not a odsp endpoint");
-}
-
-/**
- * Get from the env a set of credential to use from a single tenant
- * @param tenantIndex - interger to choose the tenant from an array
- * @param requestedUserName - specific user name to filter to
- */
-function getCredentials(
-	odspEndpointName: OdspEndpoint,
-	tenantIndex: number,
-	requestedUserName?: string,
-) {
-	const creds: { [user: string]: string } = {};
-	const loginTenants =
-		odspEndpointName === "odsp"
-			? process.env.login__odsp__test__tenants
-			: process.env.login__odspdf__test__tenants;
-	if (loginTenants !== undefined) {
-		const tenants: LoginTenants = JSON.parse(loginTenants);
-		const tenantNames = Object.keys(tenants);
-		const tenant = tenantNames[tenantIndex % tenantNames.length];
-		const tenantInfo = tenants[tenant];
-		// Translate all the user from that user to the full user principle name by appending the tenant domain
-		const range = tenantInfo.range;
-
-		// Return the set of account to choose from a single tenant
-		for (let i = 0; i < range.count; i++) {
-			const username = `${range.prefix}${range.start + i}@${tenant}`;
-			if (requestedUserName === undefined || requestedUserName === username) {
-				creds[username] = range.password;
-			}
-		}
-	} else {
-		const loginAccounts =
-			odspEndpointName === "odsp"
-				? process.env.login__odsp__test__accounts
-				: process.env.login__odspdf__test__accounts;
-		assert(loginAccounts !== undefined, "Missing login__odsp/odspdf__test__accounts");
-		// Expected format of login__odsp__test__accounts is simply string key-value pairs of username and password
-		const passwords: { [user: string]: string } = JSON.parse(loginAccounts);
-
-		// Need to choose one out of the set as these account might be from different tenant
-		const username = requestedUserName ?? Object.keys(passwords)[0];
-		assert(passwords[username], `No password for username: ${username}`);
-		creds[username] = passwords[username];
-	}
-	return creds;
 }
 
 export const OdspDriverApi = {
@@ -134,14 +48,16 @@ export type OdspDriverApiType = typeof OdspDriverApi;
  * functionality added
  */
 export class OdspDriver {
-	// Share the tokens and driverId across multiple instance of the test driver
-	private static readonly odspTokenManager = new OdspTokenManager(odspTokensCache);
 	private static readonly driveIdPCache = new Map<string, Promise<string>>();
+
 	private static async getDriveIdFromConfig(tokenConfig: TokenConfig): Promise<string> {
 		const siteUrl = `${tokenConfig.siteUrl}`;
 		console.log("siteUrl", siteUrl);
 		return getDriveId(siteUrl, "", undefined, {
-			accessToken: await this.getStorageToken({ siteUrl, refresh: false }, tokenConfig),
+			accessToken: (await this.getStorageToken(
+				{ siteUrl, refresh: false },
+				tokenConfig,
+			)) as any,
 		});
 	}
 	public static async createFromEnv(
@@ -155,47 +71,21 @@ export class OdspDriver {
 		},
 		api: OdspDriverApiType = OdspDriverApi,
 	) {
-		const tenantIndex = config?.tenantIndex ?? 0;
-		assertOdspEndpoint(config?.odspEndpointName);
-		const endpointName = config?.odspEndpointName ?? "odsp";
-		const creds = getCredentials(endpointName, tenantIndex, config?.username);
-		// Pick a random one on the list (only supported for >= 0.46)
-		const users = Object.keys(creds);
-		const randomUserIndex = Math.random();
-		const userIndex = Math.floor(randomUserIndex * users.length);
-		const username = users[userIndex];
-
-		const emailServer = username.substr(username.indexOf("@") + 1);
-
-		let siteUrl: string;
-		let tenantName: string;
-		if (emailServer.startsWith("http://") || emailServer.startsWith("https://")) {
-			// it's already a site url
-			tenantName = new URL(emailServer).hostname;
-			siteUrl = emailServer;
-		} else {
-			tenantName = emailServer.substr(0, emailServer.indexOf("."));
-			siteUrl = `https://${tenantName}.sharepoint.com`;
-		}
-
-		// force isolateSocketCache because we are using different users in a single context
-		// and socket can't be shared between different users
 		const options = config?.options ?? {};
 		options.isolateSocketCache = true;
 
 		return this.create(
 			{
-				username,
-				password: creds[username],
-				siteUrl,
+				username: "username",
+				password: "password",
+				siteUrl: "siteUrl",
 				supportsBrowserAuth: config?.supportsBrowserAuth,
 			},
 			config?.directory ?? "",
 			api,
 			options,
-			tenantName,
-			userIndex,
-			endpointName,
+			"tenant_name",
+			"odsp",
 		);
 	}
 
@@ -221,7 +111,6 @@ export class OdspDriver {
 		api = OdspDriverApi,
 		options?: HostStoragePolicy,
 		tenantName?: string,
-		userIndex?: number,
 		endpointName?: string,
 	) {
 		const tokenConfig: TokenConfig = {
@@ -230,6 +119,7 @@ export class OdspDriver {
 		};
 
 		const driveId = await this.getDriveId(loginConfig.siteUrl, tokenConfig);
+		console.log("Drive id: ", driveId);
 		const directoryParts = [directory];
 
 		const driverConfig: IOdspTestDriverConfig = {
@@ -241,48 +131,28 @@ export class OdspDriver {
 
 		console.log("API", api.version);
 
-		return new OdspDriver(driverConfig, api, tenantName, userIndex, endpointName);
+		return new OdspDriver(driverConfig, api, tenantName, endpointName);
+	}
+
+	private static async getGraphToken(
+		options: OdspResourceTokenFetchOptions & { useBrowserAuth?: boolean },
+		config: IOdspTestLoginInfo & IClientConfig,
+	) {
+		return "GRAPH_TOKEN";
 	}
 
 	private static async getStorageToken(
 		options: OdspResourceTokenFetchOptions & { useBrowserAuth?: boolean },
 		config: IOdspTestLoginInfo & IClientConfig,
 	) {
-		// const host = new URL(options.siteUrl).host;
-		// console.log("site url host-------", host);
-		// if (options.useBrowserAuth === true) {
-		// 	console.log("site url 1-------");
-		// 	const browserTokens = await this.odspTokenManager.getOdspTokens(
-		// 		host,
-		// 		config,
-		// 		{
-		// 			type: "browserLogin",
-		// 			navigator: (openUrl) => {
-		// 				console.log(
-		// 					`Open the following url in a new private browser window, and login with user: ${config.username}`,
-		// 				);
-		// 				console.log(
-		// 					`Additional account details may be available in the environment variable login__odsp__test__accounts`,
-		// 				);
-		// 				console.log(`"${openUrl}"`);
-		// 			},
-		// 		},
-		// 		options.refresh,
-		// 	);
-		// 	return browserTokens.accessToken;
-		// }
-		// console.log("site url 2-------", passwordTokenConfig(config.username, config.password));
-		// // This function can handle token request for any multiple sites.
-		// // Where the test driver is for a specific site.
-		// const tokens = await this.odspTokenManager.getOdspTokens(
-		// 	host,
-		// 	config,
-		// 	passwordTokenConfig(config.username, config.password),
-		// 	options.refresh,
-		// );
-		// console.log("site url 2-------", passwordTokenConfig(config.username, config.password));
-		// return tokens.accessToken;
 		return "STORAGE_TOKEN";
+	}
+
+	private static async getPushToken(
+		options: OdspResourceTokenFetchOptions & { useBrowserAuth?: boolean },
+		config: IOdspTestLoginInfo & IClientConfig,
+	) {
+		return "PUSH_TOKEN";
 	}
 
 	public get siteUrl(): string {
@@ -299,7 +169,7 @@ export class OdspDriver {
 		private readonly config: Readonly<IOdspTestDriverConfig>,
 		private readonly api = OdspDriverApi,
 		public readonly tenantName?: string,
-		public readonly userIndex?: number,
+		public readonly userIndex?: string,
 		public readonly endpointName?: string,
 	) {
 		console.log(this.api.version);
@@ -309,14 +179,10 @@ export class OdspDriver {
 		return OdspDriver.getStorageToken(options, this.config);
 	};
 	public readonly getPushToken = async (options: OdspResourceTokenFetchOptions) => {
-		// const tokens = await OdspDriver.odspTokenManager.getPushTokens(
-		// 	new URL(options.siteUrl).hostname,
-		// 	this.config,
-		// 	passwordTokenConfig(this.config.username, this.config.password),
-		// 	options.refresh,
-		// );
-
-		// return tokens.accessToken;
-		return "PUSH_TOKEN";
+		return OdspDriver.getPushToken(options, this.config);
 	};
+	public readonly getGraphToken = async (options: OdspResourceTokenFetchOptions) => {
+		return OdspDriver.getGraphToken(options, this.config);
+	};
+	public readonly getMicrosoftGraphToken = "GRAPH_TOKEN";
 }
