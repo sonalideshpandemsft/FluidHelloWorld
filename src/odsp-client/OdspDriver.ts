@@ -20,7 +20,6 @@ import {
 interface IOdspTestLoginInfo {
 	siteUrl: string;
 	username: string;
-	password: string;
 	supportsBrowserAuth?: boolean;
 }
 
@@ -77,7 +76,6 @@ export class OdspDriver {
 		return this.create(
 			{
 				username: "username",
-				password: "password",
 				siteUrl: "siteUrl",
 				supportsBrowserAuth: config?.supportsBrowserAuth,
 			},
