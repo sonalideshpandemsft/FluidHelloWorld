@@ -9,13 +9,14 @@ import type {
 	OdspResourceTokenFetchOptions,
 	HostStoragePolicy,
 } from "@fluidframework/odsp-driver-definitions";
-import { OdspTokenConfig, getMicrosoftConfiguration } from "@fluidframework/tool-utils";
+import { getMicrosoftConfiguration } from "@fluidframework/tool-utils";
 import {
 	OdspDocumentServiceFactory,
 	createOdspCreateContainerRequest,
 	createOdspUrl,
 	OdspDriverUrlResolver,
 } from "@fluidframework/odsp-driver";
+import { tokenMap } from "./interfaces";
 
 interface IOdspTestLoginInfo {
 	siteUrl: string;
@@ -51,7 +52,6 @@ export class OdspDriver {
 
 	private static async getDriveIdFromConfig(tokenConfig: TokenConfig): Promise<string> {
 		const siteUrl = `${tokenConfig.siteUrl}`;
-		console.log("siteUrl", siteUrl);
 		return getDriveId(siteUrl, "", undefined, {
 			accessToken: (await this.getStorageToken(
 				{ siteUrl, refresh: false },
@@ -60,30 +60,33 @@ export class OdspDriver {
 		});
 	}
 	public static async createFromEnv(
-		config?: {
+		config: {
+			username: string;
 			directory?: string;
-			username?: string;
 			options?: HostStoragePolicy;
 			supportsBrowserAuth?: boolean;
-			tenantIndex?: number;
 			odspEndpointName?: string;
 		},
 		api: OdspDriverApiType = OdspDriverApi,
 	) {
+		const startIndex = config.username.indexOf("@") + 1;
+		const endIndex = config.username.indexOf(".");
+		const tenantName = config.username.substring(startIndex, endIndex);
+		const siteUrl = `https://${tenantName}.sharepoint.com`;
 		const options = config?.options ?? {};
 		options.isolateSocketCache = true;
 
 		return this.create(
 			{
-				username: "username",
-				siteUrl: "siteUrl",
+				username: config.username,
+				siteUrl,
 				supportsBrowserAuth: config?.supportsBrowserAuth,
 			},
 			config?.directory ?? "",
 			api,
 			options,
-			"tenant_name",
-			"odsp",
+			tenantName,
+			config?.odspEndpointName,
 		);
 	}
 
@@ -136,21 +139,24 @@ export class OdspDriver {
 		options: OdspResourceTokenFetchOptions & { useBrowserAuth?: boolean },
 		config: IOdspTestLoginInfo & IClientConfig,
 	) {
-		return "GRAPH_TOKEN";
+		// return "GRAPH_TOKEN";
+		return tokenMap.get("graphToken");
 	}
 
 	private static async getStorageToken(
 		options: OdspResourceTokenFetchOptions & { useBrowserAuth?: boolean },
 		config: IOdspTestLoginInfo & IClientConfig,
 	) {
-		return "STORAGE_TOKEN";
+		// return "STORAGE_TOKEN";
+		return tokenMap.get("sharePointToken");
 	}
 
 	private static async getPushToken(
 		options: OdspResourceTokenFetchOptions & { useBrowserAuth?: boolean },
 		config: IOdspTestLoginInfo & IClientConfig,
 	) {
-		return "PUSH_TOKEN";
+		// return "PUSH_TOKEN";
+		return tokenMap.get("pushToken");
 	}
 
 	public get siteUrl(): string {
@@ -182,5 +188,4 @@ export class OdspDriver {
 	public readonly getGraphToken = async (options: OdspResourceTokenFetchOptions) => {
 		return OdspDriver.getGraphToken(options, this.config);
 	};
-	public readonly getMicrosoftGraphToken = "GRAPH_TOKEN";
 }

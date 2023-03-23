@@ -3,22 +3,35 @@
  * Licensed under the MIT License.
  */
 
+import { getTokens } from "../msal/tokens";
 import { OdspConnectionConfig } from "./interfaces";
 import { OdspClient } from "./OdspClient";
 import { OdspDriver } from "./OdspDriver";
 
 const initDriver = async () => {
 	console.log("Driver init------");
+
+	const { graphToken, sharePointToken, pushToken, userName, siteUrl } = await getTokens();
+	console.log(
+		"tokens-------------------" + graphToken,
+		sharePointToken,
+		pushToken,
+		userName,
+		siteUrl,
+	);
+
 	const driver: OdspDriver = await OdspDriver.createFromEnv({
+		username: userName,
 		directory: "OdspFluidHelloWorld",
 		supportsBrowserAuth: true,
+		odspEndpointName: "odsp",
 	});
 	console.log("Driver------", driver);
 	const connectionConfig: OdspConnectionConfig = {
-		getSharePointToken: driver.getStorageToken,
-		getPushServiceToken: driver.getPushToken,
-		getGraphToken: driver.getGraphToken,
-		getMicrosoftGraphToken: driver.getMicrosoftGraphToken,
+		getSharePointToken: driver.getStorageToken as any,
+		getPushServiceToken: driver.getPushToken as any,
+		getGraphToken: driver.getGraphToken as any,
+		getMicrosoftGraphToken: graphToken,
 	};
 
 	OdspClient.init(connectionConfig, driver.siteUrl);
