@@ -12,12 +12,17 @@ import { tokenMap } from "../odsp-client";
 
 const msalConfig = {
 	auth: {
-		clientId: "<your-client-id>",
-		authority: "<your-authority-uri>",
+		clientId: "059932a5-f5fd-412a-b90d-6d42d6545db7",
+		authority: "https://login.microsoftonline.com/common/",
 	},
 };
 
 const graphScopes = ["Files.ReadWrite.All"];
+
+const sharePointScopes = [
+	"https://tenant.sharepoint.com/Container.Selected",
+	"https://tenant.sharepoint.com/AllSites.Write",
+];
 
 const pushScopes = ["offline_access", "https://pushchannel.1drv.ms/PushChannel.ReadWrite.All"];
 
@@ -42,7 +47,7 @@ export async function getTokens(): Promise<{
 	try {
 		// Attempt to acquire SharePoint token silently
 		const sharePointRequest = {
-			scopes: [`${siteUrl}/Container.Selected`, `${siteUrl}}/AllSites.Write`],
+			scopes: sharePointScopes,
 		};
 		const sharePointTokenResult: AuthenticationResult = await msalInstance.acquireTokenSilent(
 			sharePointRequest,
@@ -74,7 +79,7 @@ export async function getTokens(): Promise<{
 		if (error instanceof InteractionRequiredAuthError) {
 			// If silent token acquisition fails, fall back to interactive flow
 			const sharePointRequest = {
-				scopes: [`${siteUrl}/Container.Selected`, `${siteUrl}}/AllSites.Write`],
+				scopes: sharePointScopes,
 			};
 			const sharePointTokenResult: AuthenticationResult =
 				await msalInstance.acquireTokenPopup(sharePointRequest);

@@ -105,11 +105,6 @@ template.innerHTML = `
   </div>
 `;
 
-const getItemIdFromUrl = (url: string): string | undefined => {
-	const match = url.match(/itemId=([^&]+)/);
-	return match?.[1];
-};
-
 const renderDiceRoller = (diceMap: SharedMap, elem: any) => {
 	elem.appendChild(template.content.cloneNode(true));
 
