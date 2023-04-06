@@ -61,30 +61,41 @@ const loadDice = async (url: string) => {
 	renderDiceRoller(map, root);
 };
 
+const containerPath = (url: string) => {
+	const itemIdPattern = /itemId=([^&]+)/; // regular expression to match the itemId parameter value
+	let itemId;
+
+	const match = url.match(itemIdPattern); // get the match object for the itemId parameter value
+	if (match) {
+		itemId = match[1]; // extract the itemId parameter value from the match object
+		console.log(itemId); // output: "itemidQ"
+	} else {
+		console.log("itemId parameter not found in the URL");
+		itemId = "";
+	}
+	return itemId;
+};
+
 async function start() {
 	console.log("Initiating the driver------");
 	const odspDriver = await getodspDriver();
 	console.log("INITIAL DRIVER", odspDriver);
 
 	if (location.hash) {
-		// const containerId = /^#(https?|ftp):\/\//i.test(location.hash)
-		// 	? decodeURI(location.hash)
-		// 	: location.hash;
-		const hash = decodeURI(location.hash);
-		const id = hash.charAt(0) === "#" ? hash.substring(1) : hash;
-		console.log("hash---", id);
-		await loadDice(id);
+		const hash = location.hash;
+		console.log("get container hash: ", hash);
+		const itemId = hash.charAt(0) === "#" ? hash.substring(1) : hash;
+		let url = localStorage.getItem(itemId);
+		console.log("url:::", url);
+		await loadDice(url as string);
 	} else {
 		const containerId = await createDice(odspDriver);
 		console.log("container id: ", containerId);
-		// const itemId = getItemIdFromUrl(containerId);
-		/**
-		 * The encodeURI() function is used to encode a URI and the decodeURI() function is used to decode the encoded URI.
-		 * In this code, url is encoded using encodeURI() and then stored in the window.location.hash property. Finally, the location.hash
-		 * property is decoded using decodeURI() and logged to the console.
-		 */
-		window.location.hash = encodeURI(containerId); //The encodeURI function is used to encode the URL string so that it can be safely used in the hash fragment of the URL. The location.hash property returns the value of the hash fragment of the URL. In this case, it returns the encoded URL string as the hash fragment.
-		// window.location.hash = itemId !== undefined ? itemId : encodeURI(containerId);
+		const itemId = containerPath(containerId);
+
+		localStorage.setItem(itemId, containerId);
+
+		window.location.hash = itemId;
 	}
 }
 

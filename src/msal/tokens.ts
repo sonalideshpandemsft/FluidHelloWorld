@@ -20,8 +20,8 @@ const msalConfig = {
 const graphScopes = ["Files.ReadWrite.All"];
 
 const sharePointScopes = [
-	"https://tenant.sharepoint.com/Container.Selected",
-	"https://tenant.sharepoint.com/AllSites.Write",
+	"https://<YOUR-TENANT-ID>.sharepoint.com/Container.Selected",
+	"https://<YOUR-TENANT-ID>.sharepoint.com/AllSites.Write",
 ];
 
 const pushScopes = ["offline_access", "https://pushchannel.1drv.ms/PushChannel.ReadWrite.All"];
