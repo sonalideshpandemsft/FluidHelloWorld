@@ -1,32 +1,55 @@
-/*!
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License.
- */
-
-const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const webpack = require("webpack");
 
-module.exports = (env) => {
-    const htmlTemplate = "./src/index.html";
-    const plugins =
-        env && env.clean
-            ? [new CleanWebpackPlugin(), new HtmlWebpackPlugin({ template: htmlTemplate })]
-            : [new HtmlWebpackPlugin({ template: htmlTemplate })];
-
-    const mode = env && env.prod ? "production" : "development";
-
-    return {
-        devtool: "inline-source-map",
-        entry: {
-            app: "./src/app.js",
-        },
-        mode,
-        output: {
-            filename: "[name].[contenthash].js",
-        },
-        plugins,
-        devServer: {
-            open: false,
-        },
-    };
-};
+module.exports = [
+	{
+		entry: "./src/odsp-app.ts",
+		mode: "development",
+		output: {
+			filename: "[name].[contenthash].js",
+			path: path.resolve(__dirname, "dist"),
+		},
+		plugins: [
+			new webpack.ProvidePlugin({
+				process: "process/browser",
+			}),
+			new webpack.DefinePlugin({
+				"process.env.login__odsp__test__tenants": JSON.stringify(
+					"login__odsp__test__tenants",
+				),
+				"process.env.login__odspdf__test__tenants": JSON.stringify(
+					"login__odspdf__test__tenants",
+				),
+				"process.env.login__odsp__test__accounts": JSON.stringify(
+					"login__odsp__test__accounts",
+				),
+				"process.env.login__microsoft__clientId": JSON.stringify(
+					"login__microsoft__clientId",
+				),
+				"process.env.login__microsoft__secret": JSON.stringify("login__microsoft__secret"),
+			}),
+			new HtmlWebpackPlugin({ template: "./src/index.html" }),
+		],
+		module: {
+			rules: [
+				{
+					test: /\.tsx?$/,
+					use: "ts-loader",
+					exclude: /node_modules/,
+				},
+			],
+		},
+		resolve: {
+			extensions: [".ts", ".tsx", ".js"],
+			fallback: {
+				http: false,
+				fs: false,
+				constants: false,
+			},
+		},
+		devServer: {
+			open: false,
+		},
+	},
+];

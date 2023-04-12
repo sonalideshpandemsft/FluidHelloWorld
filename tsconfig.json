@@ -1,0 +1,12 @@
+{
+	"compilerOptions": {
+		"target": "es2016",
+		"module": "commonjs",
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"skipLibCheck": true,
+		"types": ["node"],
+	},
+	"browser": true, // used to specify a target environment for the TypeScript compiler. This field is typically used when you are writing code that will run in a web browser, as opposed to a Node.js environment.
+}

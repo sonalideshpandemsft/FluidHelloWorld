@@ -3,37 +3,56 @@
  * Licensed under the MIT License.
  */
 
-import { SharedMap } from "fluid-framework";
-import { TinyliciousClient } from "@fluidframework/tinylicious-client";
+import { SharedMap } from "@fluidframework/map";
+import { AzureClient, AzureLocalConnectionConfig } from "@fluidframework/azure-client";
+import { ContainerSchema } from "@fluidframework/fluid-static";
+import { InsecureTokenProvider } from "@fluidframework/test-client-utils";
 
 export const diceValueKey = "dice-value-key";
-// Load container and render the app
+let window: { [key: string]: any } = {};
 
-const client = new TinyliciousClient();
-const containerSchema = {
+const userConfig = {
+    id: "userId",
+    name: "userName",
+    additionalDetails: {
+        email: "userName@example.com",
+    },
+};
+
+const serviceConfig: AzureLocalConnectionConfig = {
+    type: "local",
+    tokenProvider: new InsecureTokenProvider("fooBar", userConfig),
+    endpoint: "http://localhost:7070",
+};
+
+const client = new AzureClient({ connection: serviceConfig });
+
+const containerSchema: ContainerSchema = {
     initialObjects: { diceMap: SharedMap },
 };
 
 const root = document.getElementById("content");
 
-const createNewDice = async () => {
+const createDice = async () => {
     const { container } = await client.createContainer(containerSchema);
-    container.initialObjects.diceMap.set(diceValueKey, 1);
+    const map = container.initialObjects.diceMap as SharedMap;
+    map.set(diceValueKey, 1);
     const id = await container.attach();
-    renderDiceRoller(container.initialObjects.diceMap, root);
+    renderDiceRoller(map, root);
     return id;
 };
 
-const loadExistingDice = async (id) => {
+const loadDice = async (id: string) => {
     const { container } = await client.getContainer(id, containerSchema);
-    renderDiceRoller(container.initialObjects.diceMap, root);
+    const map = container.initialObjects.diceMap as SharedMap;
+    renderDiceRoller(map, root);
 };
 
 async function start() {
     if (location.hash) {
-        await loadExistingDice(location.hash.substring(1));
+        await loadDice(location.hash.substring(1));
     } else {
-        const id = await createNewDice();
+        const id = await createDice();
         location.hash = id;
     }
 }
@@ -55,7 +74,7 @@ template.innerHTML = `
   </div>
 `;
 
-const renderDiceRoller = (diceMap, elem) => {
+const renderDiceRoller = (diceMap: any, elem: any) => {
     elem.appendChild(template.content.cloneNode(true));
 
     const rollButton = elem.querySelector(".roll");
@@ -75,6 +94,7 @@ const renderDiceRoller = (diceMap, elem) => {
 
     // Use the changed event to trigger the rerender whenever the value changes.
     diceMap.on("valueChanged", updateDice);
+
     // Setting "fluidStarted" is just for our test automation
     window["fluidStarted"] = true;
 };
